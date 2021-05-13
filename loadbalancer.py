@@ -1,36 +1,40 @@
 import random
 from flask import Flask, request
 import requests
+import yaml
 
 
 loadbalancer = Flask(__name__)
 
-apple_backends = ["localhost:9081", "localhost:9082"]
-mango_backends = ["localhost:8081", "localhost:8082"]
+
+def load_configuration(file_path):
+
+    with open(file_path) as config_file:
+        _config = yaml.load(config_file, Loader=yaml.FullLoader)
+    return _config
 
 
-@loadbalancer.route("/")
+config = load_configuration("loadbalancer.yaml")
+
+
+@loadbalancer.get("/")
 def router():
     host_header = request.headers["Host"]
-    if host_header == "www.mango.com":
-        response = requests.get(f"http://{random.choice(mango_backends)}")
-        return response.content, response.status_code
+    for entry in config["hosts"]:
+        if host_header == entry["host"]:
+            response = requests.get(f"http://{random.choice(entry['servers'])}")
+            return response.content, response.status_code
 
-    elif host_header == "www.apple.com":
-        response = requests.get(f"http://{random.choice(apple_backends)}")
-        return response.content, response.status_code
-    else:
-        return 'Not Found', 404
+    return 'Not Found', 404
 
 
-@loadbalancer.route("/mango")
-def mango_path():
-    response = requests.get(f"http://{random.choice(mango_backends)}")
-    return response.content, response.status_code
+@loadbalancer.get("/<path>")
+def path_router(path):
 
+    for entry in config["paths"]:
+        if ("/" + path) == entry["path"]:
+            response = requests.get(f"http://{random.choice(entry['servers'])}")
+            return response.content, response.status_code
 
-@loadbalancer.route("/apple")
-def apple_path():
-    response = requests.get(f"http://{random.choice(apple_backends)}")
-    return response.content, response.status_code
+    return 'Not Found', 404
 
