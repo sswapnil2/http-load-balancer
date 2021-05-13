@@ -21,3 +21,16 @@ def router():
         return response.content, response.status_code
     else:
         return 'Not Found', 404
+
+
+@loadbalancer.route("/mango")
+def mango_path():
+    response = requests.get(f"http://{random.choice(mango_backends)}")
+    return response.content, response.status_code
+
+
+@loadbalancer.route("/apple")
+def apple_path():
+    response = requests.get(f"http://{random.choice(apple_backends)}")
+    return response.content, response.status_code
+
